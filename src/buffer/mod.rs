@@ -3,7 +3,10 @@ use std::fs::File;
 use std::vec::Vec;
 use std::path::Path;
 use std::string::String;
-use std::io::{self, BufRead};
+use std::io::{self, BufRead, Write};
+use termion::cursor;
+
+use super::screen::Screen;
 
 pub struct Buffer {
 	/// The contents of the buffer, a vector of utf-8 strings, each entry being
@@ -50,8 +53,59 @@ impl Buffer {
 		}
 	}
 	
+	pub fn write_to_screen<W>(&mut self, screen: &mut Screen<W>) -> io::Result<()>
+	where
+		W: Write
+	{
+		let pos = self.position;
+		let cursor = self.cursor;
+		let size = screen.size()?;
+		
+		screen.clear()?;
+		
+		let mut y = pos.0;
+		let lines = self.lines.iter().skip(y);
+		
+		for line in lines {
+			if y >= (size.1 - pos.1) {
+				break;
+			}
+			
+			let mut x = pos.0;
+			let chars = line.chars().skip(x);
+			
+			for c in chars {
+				if x >= (size.0 - pos.0) {
+					break;
+				}
+				//eprintln!("{},{}", x, y);
+				
+				write!(screen, "{}{}", goto(x, y), c)?;
+				
+				x += 1;
+			}
+			
+			y += 1;
+		}
+		
+		// Fill remaining lines with ~
+		//while y < (size.1 - pos.1) {
+			
+		//}
+		
+		write!(screen, "{}", goto(cursor.0, cursor.1))?;
+		screen.flush()?;
+		Ok(())
+	}
+	
 }
 
+/// Returns an ansi escape sequence to move the cursor to the given 0 based 
+/// usize indexes.
+/// This will convert them to u16s and make them 1 based.
+fn goto(x: usize, y: usize) -> cursor::Goto {
+	cursor::Goto(x as u16 + 1, y as u16 + 1)
+}
 
 /// Read each line from the given buffer with respect for the given 
 fn read_lines<R: BufRead + ?Sized>(r: &mut R, crlf: bool) -> io::Result<Vec<String>> {
