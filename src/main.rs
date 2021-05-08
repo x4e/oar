@@ -36,6 +36,7 @@ fn main() {
 		if let Ok(e) = e {
 			match e {
 				Event::Key(Key::Char('q')) => break,
+				Event::Key(Key::Char('c')) => continue,
 				_ => {}
 			}
 		}
