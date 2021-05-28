@@ -2,50 +2,44 @@ extern crate termion;
 
 pub mod buffer;
 pub mod input;
+pub mod render;
 pub mod screen;
+mod utils;
 
-use self::screen::Screen;
 use self::buffer::Buffer;
+use self::render::Renderable;
+use self::screen::Screen;
 
-use termion::event::{Event, Key};
-use termion::input::TermRead;
 use std::io::{Write, stdout, stdin};
 use std::env;
+use std::process::exit;
 
 fn main() {
 	
 	let stdin = stdin();
 	let stdout = stdout();
 	
-	let mut screen = Screen::new(stdout).unwrap();
-	screen.switch_to_alternate().unwrap();
-	
 	let args: Vec<String> = env::args().collect();
-	let file = args[1].clone();
-	println!("Reading {}", file);
-	let mut buffer = Buffer::from_file(file, false).unwrap();
+	
+	let buffer = if let Some(file) = args.get(1).clone() {
+		println!("Reading {}", file);
+		Buffer::from_file(file, false).unwrap()
+	} else {
+		eprintln!("Usage: oar file");
+		exit(1);
+	};
+	
+	let mut screen = Screen::new(stdout).unwrap();
+	// Note: No need to switch back to main on application exit as Screen::drop
+	// automatically does this for us.
+	screen.switch_to_alternate().unwrap();
 	
 	write!(screen, "{}", termion::cursor::Hide).unwrap();
 	
-	buffer.write_to_screen(&mut screen).unwrap();
-	
+	buffer.render_to_screen(&mut screen).unwrap();
 	screen.flush().unwrap();
 	
-	for e in stdin.events() {
-		println!("{:?}", e);
-		if let Ok(e) = e {
-			match e {
-				Event::Key(Key::Char('q')) => break,
-				Event::Key(Key::Char('c')) => continue,
-				_ => {}
-			}
-		}
-	}
-	//for c in stdin.keys() {
-	//	match c.unwrap() {
-	//		Key::Char('q') => break,
-	//		_ => {}
-	//	}
-	//}
+	input::poll_input(stdin);
+	
 	write!(screen, "{}", termion::cursor::Show).unwrap();
 }
