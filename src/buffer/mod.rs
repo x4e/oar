@@ -44,13 +44,11 @@ impl Buffer {
 		self.lines.get_mut(num)
 	}
 	
+	/// Set the line at the given index to the new string, returning the old
+	/// string if this operation actually replaced a string, and None if this
+	/// operation did nothing.
 	pub fn set_line(&mut self, num: usize, new: String) -> Option<String> {
-		if let Some(item) = self.get_line_mut(num) {
-			Some(std::mem::replace(item, new))
-		} else {
-			None
-		}
+		self.get_line_mut(num)
+			.map(|item| std::mem::replace(item, new))
 	}
-	
-	
 }
