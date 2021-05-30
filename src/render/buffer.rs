@@ -3,6 +3,7 @@ use crate::error::*;
 use crate::screen::Screen;
 use super::Renderable;
 
+use std::cmp::min;
 use std::io::{Write};
 
 
@@ -14,35 +15,22 @@ impl Renderable for Buffer {
 		
 		screen.clear()?;
 		
-		let mut y = pos.0;
-		let lines = self.lines.iter().skip(y);
+		let mut lines = self.lines.iter().skip(pos.1);
 		
-		for line in lines {
-			if y >= (size.1 - pos.1) {
-				break;
-			}
+		for y in 0..size.1 {
+			let line = match lines.next() {
+				Some(line) => line,
+				None => break
+			};
 			
-			let mut x = pos.0;
-			let chars = line.chars().skip(x);
+			screen.goto(0, y)?;
 			
-			for c in chars {
-				if x >= (size.0 - pos.0) {
-					break;
-				}
-				
-				screen.goto(x, y)?;
-				write!(screen, "{}", c)?;
-				
-				x += 1;
-			}
+			let x = pos.0;
+			let end_x = min(line.len() - 1, x + size.0);
+			let line: String = line.chars().take(end_x).skip(x).collect();
 			
-			y += 1;
+			write!(screen, "{}", line);
 		}
-		
-		// Fill remaining lines with ~
-		//while y < (size.1 - pos.1) {
-			
-		//}
 		
 		screen.goto(cursor.0, cursor.1)?;
 		screen.flush()?;

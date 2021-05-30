@@ -1,8 +1,9 @@
 
-use crate::error::*;
+use crate::application::Application;
+use crate::error::Result;
 use crate::event::Event;
 
-use std::sync::{mpsc};
+use std::sync::mpsc;
 use std::thread::{self, JoinHandle};
 
 use crossterm::event::{self, Event as TermEvent, KeyCode};
@@ -40,4 +41,41 @@ fn listen_for_events(send: mpsc::Sender<Event>) -> Result<()> {
 		}
 	}
 	Ok(())
+}
+
+pub enum EventResult {
+	/// Quit the application
+	Quit,
+	/// Re-render the screen
+	Render,
+	/// Dont do any further actions
+	None
+}
+
+/// Called from main thread
+/// Returns whether a re-render is needed
+pub fn process_event(app: &Application, event: Event) -> Result<EventResult> {
+	Ok(match event {
+		Event::Quit => EventResult::Quit,
+		Event::ScrollUp => {
+			let app = &*app;
+			if let Some(buf) = app.selected_buffer() {
+				let mut buf = buf.write()?;
+				if let Some(y) = buf.position.1.checked_sub(1) {
+					buf.position.1 = y;
+				}
+			}
+			EventResult::Render
+		},
+		Event::ScrollDown => {
+			let app = &*app;
+			if let Some(buf) = app.selected_buffer() {
+				let mut buf = buf.write()?;
+				if let Some(y) = buf.position.1.checked_add(1) {
+					buf.position.1 = y;
+				}
+			}
+			EventResult::Render
+		},
+	})
 }

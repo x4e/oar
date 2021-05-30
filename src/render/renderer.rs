@@ -22,10 +22,10 @@ fn render(app: Arc<Application>, recv: mpsc::Receiver<()>) -> Result<()> {
 	let app = &*app;
 	
 	screen.switch_to_alternate()?;
+	screen.enable_raw_mode()?;
 	screen.hide_cursor()?;
 	screen.clear()?;
 	screen.flush()?;
-	screen.enable_raw_mode()?;
 	
 	loop {
 		if recv.recv().is_err() {
@@ -35,6 +35,7 @@ fn render(app: Arc<Application>, recv: mpsc::Receiver<()>) -> Result<()> {
 		// The sender has sent us something which is our cue to render
 		
 		if let Some(buf) = app.selected_buffer() {
+			let buf = buf.read()?;
 			buf.render_to_screen(&mut screen).unwrap();
 		}
 	}
@@ -42,7 +43,6 @@ fn render(app: Arc<Application>, recv: mpsc::Receiver<()>) -> Result<()> {
 	// cleanup screen state
 	screen.show_cursor()?;
 	screen.switch_to_main()?;
-	screen.flush()?;
 	screen.disable_raw_mode()?;
 	screen.flush()?;
 	

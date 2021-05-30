@@ -9,7 +9,7 @@ mod utils;
 
 use self::application::Application;
 use self::buffer::Buffer;
-use self::event::Event;
+use self::input::EventResult;
 use self::render::start_render_thread;
 
 use std::env;
@@ -38,20 +38,17 @@ fn main() {
 	
 	let (inp_thread, inp_recv) = input::start_input_thread();
 	
-	loop {
-		if let Ok(event) = inp_recv.recv() {
-			match event {
-				Event::Quit => break,
-				_ => {},
-			}
-			
-			rend_send.send(()).unwrap();
-		} else {
-			break
+	while let Ok(event) = inp_recv.recv() {
+		match input::process_event(&*app, event) {
+			Ok(EventResult::Quit) => break,
+			Ok(EventResult::Render) => rend_send.send(()).unwrap(),
+			Ok(EventResult::None) => {},
+			Err(e) => eprintln!("{:?}", e),
 		}
 	}
 	
-	inp_thread.join().unwrap();
+	// Make sure the other threads have a chance to shutdown
+	inp_thread.join().unwrap().unwrap();
 	drop(rend_send);
-	rend_thread.join().unwrap();
+	rend_thread.join().unwrap().unwrap();
 }

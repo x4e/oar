@@ -80,6 +80,15 @@ impl <W: Write> Screen<W> {
 	}
 }
 
+impl <W: Write> Drop for Screen<W> {
+	fn drop(&mut self) {
+		self.show_cursor().unwrap();
+		self.switch_to_main().unwrap();
+		self.disable_raw_mode().unwrap();
+		self.flush().unwrap();
+	}
+}
+
 impl <W: Write> Write for Screen<W> {
 	fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
 		self.inner.write(buf)

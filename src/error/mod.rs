@@ -30,7 +30,7 @@ pub enum Error {
 	IntConvertError(#[from] std::num::TryFromIntError),
 	
 	#[error("{0}")]
-	OtherError(String)
+	OtherError(String),
 }
 
 impl From<ErrorKind> for Error {
@@ -49,12 +49,24 @@ impl From<ErrorKind> for Error {
 
 impl From<std::convert::Infallible> for Error {
 	fn from(_up: std::convert::Infallible) -> Error {
-		panic!("Infallible Error");
+		unreachable!();
 	}
 }
 
 impl <T> From<std::sync::mpsc::SendError<T>> for Error {
 	fn from(up: std::sync::mpsc::SendError<T>) -> Error {
 		Error::OtherError(format!("{:?}", up))
+	}
+}
+
+impl <T> From<std::sync::PoisonError<T>> for Error {
+	fn from(up: std::sync::PoisonError<T>) -> Error {
+		Error::OtherError(format!("{:?}", up))
+	}
+}
+
+impl Drop for Error {
+	fn drop(&mut self) {
+		eprintln!("{:?}", self);
 	}
 }
