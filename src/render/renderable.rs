@@ -1,5 +1,5 @@
 
-use super::screen::Screen;
+use crate::screen::Screen;
 
 use std::io::{self, Write};
 

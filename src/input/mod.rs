@@ -15,14 +15,12 @@ pub fn poll_input<R: TermRead + io::Read>(read: R, sync: Arc<(Mutex<bool>, Condv
 	
 	for e in read.events().flatten() {
 		match e {
-			Event::Key(Key::Char('q')) => {
-				cvar.notify_one();
-				break;
-			},
+			Event::Key(Key::Char('q')) => break,
 			Event::Key(Key::Char('c')) => continue,
 			Event::Key(Key::Up) => continue,
 			Event::Key(Key::Down) => continue,
 			_ => {}
 		}
 	}
+	cvar.notify_one();
 }

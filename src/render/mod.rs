@@ -2,13 +2,11 @@ pub mod buffer;
 pub mod renderable;
 pub mod renderer;
 
-use super::buffer::Buffer;
-use super::screen;
+pub use renderable::Renderable;
+pub use renderer::start_render_thread;
+
 
 use termion::cursor;
-pub use renderable::Renderable;
-
-
 
 /// Returns an ansi escape sequence to move the cursor to the given 0 based 
 /// usize indexes.

@@ -1,16 +1,15 @@
-extern crate termion;
-
+pub mod application;
 pub mod buffer;
 pub mod input;
 pub mod render;
 pub mod screen;
 mod utils;
 
+use self::application::Application;
 use self::buffer::Buffer;
-use self::render::Renderable;
-use self::screen::Screen;
+use self::render::start_render_thread;
 
-use std::io::{Write, stdout, stdin};
+use std::io::stdin;
 use std::env;
 use std::process::exit;
 use std::sync::{Arc, Condvar, Mutex};
@@ -27,15 +26,14 @@ fn main() {
 		exit(1);
 	};
 	
-	let mut screen = Screen::new(stdout()).unwrap();
-	// Note: No need to switch back to main on application exit as Screen::drop
-	// automatically does this for us.
-	screen.switch_to_alternate().unwrap();
+	let mut app = Application::new();
+	app.add_buffer(buffer);
+	let app = Arc::new(app);
 	
-	write!(screen, "{}", termion::cursor::Hide).unwrap();
-	
-	buffer.render_to_screen(&mut screen).unwrap();
-	screen.flush().unwrap();
+	let renderer = start_render_thread(
+		Arc::clone(&app)
+	);
+	renderer.send(()).unwrap();
 	
 	#[allow(clippy::mutex_atomic)]
 	let sync = Arc::new((Mutex::new(false), Condvar::new()));
@@ -49,7 +47,8 @@ fn main() {
 	let mut notify = lock.lock().unwrap();
 	while !*notify {
 		notify = cvar.wait(notify).unwrap();
+		renderer.send(()).unwrap();
 	}
 	
-	write!(screen, "{}", termion::cursor::Show).unwrap();
+	println!("Ending");
 }

@@ -30,6 +30,8 @@ pub fn read_lines<R: BufRead + ?Sized>(r: &mut R, crlf: bool) -> io::Result<Vec<
 			more = false;
 		}
 		
+		// If we did not continue then we will push the string as a line and
+		// reset the string
 		lines.push(std::mem::replace(&mut line, String::new()));
 	}
 	Ok(lines)
@@ -38,9 +40,9 @@ pub fn read_lines<R: BufRead + ?Sized>(r: &mut R, crlf: bool) -> io::Result<Vec<
 #[test]
 fn test_read_lines_lf() {
 	// Trailing new lines
-	let mut string = "\nHello\nHello\n\nHello\n\n\n".as_bytes();
+	let mut string = "\nHello\n\rH\rello\n\nHello\r\n\n\n".as_bytes();
 	let lines = read_lines(&mut string, false).unwrap();
-	assert_eq!(lines, vec!["", "Hello", "Hello", "", "Hello", "", "", ""]);
+	assert_eq!(lines, vec!["", "Hello", "\rH\rello", "", "Hello\r", "", "", ""]);
 	
 	// No trailing new line
 	let mut string = "Hello\nHello".as_bytes();
@@ -51,9 +53,9 @@ fn test_read_lines_lf() {
 #[test]
 fn test_read_lines_crlf() {
 	// Trailing new lines
-	let mut string = "\r\nHello\r\nH\nello\r\n\n\r\nHello\r\n\r\n\r\n".as_bytes();
+	let mut string = "\r\nHello\r\r\n\rH\n\rello\r\n\n\r\nHello\r\n\r\n\r\n".as_bytes();
 	let lines = read_lines(&mut string, true).unwrap();
-	assert_eq!(lines, vec!["", "Hello", "H\nello", "\n", "Hello", "", "", ""]);
+	assert_eq!(lines, vec!["", "Hello\r", "\rH\n\rello", "\n", "Hello", "", "", ""]);
 	
 	// No trailing new line
 	let mut string = "Hello\r\nHello".as_bytes();

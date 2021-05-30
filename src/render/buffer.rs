@@ -1,7 +1,6 @@
-
-use super::Buffer;
+use crate::Buffer;
+use crate::screen::Screen;
 use super::Renderable;
-use super::screen::Screen;
 use super::goto;
 
 use std::io::{self, Write};
