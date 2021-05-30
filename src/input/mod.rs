@@ -1,26 +1,43 @@
 
-use termion::event::{Event, Key};
-use termion::input::TermRead;
-use std::io;
-use std::sync::{Arc, Condvar, Mutex};
+use crate::error::*;
+use crate::event::Event;
+
+use std::sync::{mpsc};
+use std::thread::{self, JoinHandle};
+
+use crossterm::event::{self, Event as TermEvent, KeyCode};
 
 /// This method will continously block the current thread.
 /// 
 /// The method will return if the user signals through input that they want
 /// to quit the application.
-pub fn poll_input<R: TermRead + io::Read>(read: R, sync: Arc<(Mutex<bool>, Condvar)>) {
-	let (lock, cvar) = &*sync;
-	let mut notify = lock.lock().unwrap();
-	*notify = true;
+pub fn start_input_thread() -> (JoinHandle<Result<()>>, mpsc::Receiver<Event>) {
+	let (send, recv) = mpsc::channel::<Event>();
 	
-	for e in read.events().flatten() {
-		match e {
-			Event::Key(Key::Char('q')) => break,
-			Event::Key(Key::Char('c')) => continue,
-			Event::Key(Key::Up) => continue,
-			Event::Key(Key::Down) => continue,
-			_ => {}
+	(
+		thread::spawn(move || listen_for_events(send)),
+		recv
+	)
+}
+
+fn listen_for_events(send: mpsc::Sender<Event>) -> Result<()> {
+	loop {
+		match event::read().unwrap() {
+			TermEvent::Key(event) => {
+				match event.code {
+					KeyCode::Char('q') => {
+						send.send(Event::Quit)?;
+						break;
+					},
+					KeyCode::Char('c') => {},
+					KeyCode::Up => send.send(Event::ScrollUp)?,
+					KeyCode::Down => send.send(Event::ScrollDown)?,
+					_ => {}
+				}
+			},
+			TermEvent::Mouse(_event) => {},
+			TermEvent::Resize(_width, _height) => {}
 		}
 	}
-	cvar.notify_one();
+	Ok(())
 }

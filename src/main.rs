@@ -1,5 +1,7 @@
 pub mod application;
 pub mod buffer;
+pub mod error;
+pub mod event;
 pub mod input;
 pub mod render;
 pub mod screen;
@@ -7,13 +9,12 @@ mod utils;
 
 use self::application::Application;
 use self::buffer::Buffer;
+use self::event::Event;
 use self::render::start_render_thread;
 
-use std::io::stdin;
 use std::env;
 use std::process::exit;
-use std::sync::{Arc, Condvar, Mutex};
-use std::thread;
+use std::sync::{Arc};
 
 fn main() {
 	let args: Vec<String> = env::args().collect();
@@ -30,25 +31,27 @@ fn main() {
 	app.add_buffer(buffer);
 	let app = Arc::new(app);
 	
-	let renderer = start_render_thread(
+	let (rend_thread, rend_send) = start_render_thread(
 		Arc::clone(&app)
 	);
-	renderer.send(()).unwrap();
+	rend_send.send(()).unwrap();
 	
-	#[allow(clippy::mutex_atomic)]
-	let sync = Arc::new((Mutex::new(false), Condvar::new()));
-	let sync2 = Arc::clone(&sync);
+	let (inp_thread, inp_recv) = input::start_input_thread();
 	
-	thread::spawn(move|| {
-		input::poll_input(stdin(), sync2);
-	});
-	
-	let (lock, cvar) = &*sync;
-	let mut notify = lock.lock().unwrap();
-	while !*notify {
-		notify = cvar.wait(notify).unwrap();
-		renderer.send(()).unwrap();
+	loop {
+		if let Ok(event) = inp_recv.recv() {
+			match event {
+				Event::Quit => break,
+				_ => {},
+			}
+			
+			rend_send.send(()).unwrap();
+		} else {
+			break
+		}
 	}
 	
-	println!("Ending");
+	inp_thread.join().unwrap();
+	drop(rend_send);
+	rend_thread.join().unwrap();
 }

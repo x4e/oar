@@ -1,58 +1,82 @@
-extern crate termion;
 
-use termion::cursor;
-use termion::raw::{RawTerminal, IntoRawMode};
-use termion::input::MouseTerminal;
-use termion::screen::*;
-use termion::terminal_size;
+use crate::error::*;
 
+use std::convert::TryFrom;
 use std::io::{self, Write};
+
+use crossterm::cursor;
+use crossterm::terminal::{
+	self,
+	Clear,
+	ClearType,
+	EnterAlternateScreen,
+	LeaveAlternateScreen
+};
+use crossterm::QueueableCommand;
+
 
 pub struct Screen <W: Write> {
 	/// The terminal that is the output for this screen
-	inner: MouseTerminal<AlternateScreen<RawTerminal<W>>>
+	inner: W
 }
 
-unsafe impl <W: Write> Send for Screen<W> {}
-unsafe impl <W: Write> Sync for Screen<W> {}
-
 impl <W: Write> Screen<W> {
-	pub fn new(out: W) -> io::Result<Screen<W>> {
-		Ok(Screen {
-			inner: MouseTerminal::from(AlternateScreen::from(out.into_raw_mode()?))
-		})
+	pub fn new(inner: W) -> Screen<W> {
+		Screen {
+			inner
+		}
 	}
 	
-	pub fn show_cursor(&mut self) -> io::Result<()> {
-		write!(self, "{}", cursor::Show)?;
+	pub fn enable_raw_mode(&mut self) -> Result<()> {
+		terminal::enable_raw_mode()?;
 		Ok(())
 	}
 	
-	pub fn hide_cursor(&mut self) -> io::Result<()> {
-		write!(self, "{}", cursor::Hide)?;
+	pub fn disable_raw_mode(&mut self) -> Result<()> {
+		terminal::disable_raw_mode()?;
 		Ok(())
 	}
 	
-	pub fn clear(&mut self) -> io::Result<()> {
-		write!(self, "{}", termion::clear::All)?;
+	pub fn switch_to_main(&mut self) -> Result<()> {
+		self.queue(EnterAlternateScreen)?;
+		Ok(())
+	}
+	
+	pub fn switch_to_alternate(&mut self) -> Result<()> {
+		self.queue(LeaveAlternateScreen)?;
+		Ok(())
+	}
+	
+	pub fn show_cursor(&mut self) -> Result<()> {
+		self.queue(cursor::Show)?;
+		Ok(())
+	}
+	
+	pub fn hide_cursor(&mut self) -> Result<()> {
+		self.queue(cursor::Hide)?;
 		Ok(())
 	}
 	
 	/// Returns 0 indexed size of terminal
-	pub fn size(&mut self) -> io::Result<(usize, usize)> {
-		let size = terminal_size()?;
-		Ok((size.0 as usize - 1, size.1 as usize - 1))
+	pub fn size(&mut self) -> Result<(usize, usize)> {
+		let size = terminal::size()?;
+		Ok((
+			usize::try_from(size.0)? - 1,
+			usize::try_from(size.1)? - 1
+		))
 	}
-}
-
-impl <W: Write> Drop for Screen<W> {
-	fn drop(&mut self) {
-		println!("Screen dropping");
-		// ensure that we dont leave the terminal in alternate state
-		//_ = self.switch_to_main();
-		//let _ = self.show_cursor();
-		//let _ = self.flush();
-		println!("Screen dropped");
+	
+	pub fn goto(&mut self, x: usize, y: usize) -> Result<()> {
+		self.queue(cursor::MoveTo(
+			u16::try_from(x)?,
+			u16::try_from(y)?
+		))?;
+		Ok(())
+	}
+	
+	pub fn clear(&mut self) -> Result<()> {
+		self.queue(Clear(ClearType::All))?;
+		Ok(())
 	}
 }
 

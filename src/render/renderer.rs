@@ -1,44 +1,50 @@
 use crate::application::Application;
+use crate::error::*;
 use crate::screen::Screen;
 use super::Renderable;
 
-use std::io::{Write, stdout};
+use std::io::{stdout, Write};
 use std::sync::{Arc, mpsc};
-use std::thread;
+use std::thread::{self, JoinHandle};
 
-pub fn start_render_thread(
-	app: Arc<Application>,
-) -> mpsc::Sender<()> {
-	let (send, recv) = mpsc::channel::<()>();	
+pub fn start_render_thread(app: Arc<Application>) -> (JoinHandle<Result<()>>, mpsc::Sender<()>) {
+	let (send, recv) = mpsc::channel::<()>();
 	
-	thread::spawn(move || {
-		let mut screen = Screen::new(stdout()).unwrap();
-		// Get underlying app from arc
-		let app = &*app;
-		
-		//screen.switch_to_alternate().unwrap();
-		//screen.hide_cursor().unwrap();
-		//screen.flush().unwrap();
-		
-		println!("Hello\nHello\nhello\n~\n~");
-		loop {
-			if recv.recv().is_err() {
-				// The sender has disconnected, shut down the thread
-				break
-			}
-			// The sender has sent us something which is our cue to render
-			
-			if let Some(buf) = app.selected_buffer() {
-				//buf.render_to_screen(&mut screen).unwrap();
-			}
+	(
+		thread::spawn(move || render(app, recv)),
+		send
+	)
+}
+
+fn render(app: Arc<Application>, recv: mpsc::Receiver<()>) -> Result<()> {
+	let mut screen = Screen::new(stdout());
+	// Get underlying app from arc
+	let app = &*app;
+	
+	screen.switch_to_alternate()?;
+	screen.hide_cursor()?;
+	screen.clear()?;
+	screen.flush()?;
+	screen.enable_raw_mode()?;
+	
+	loop {
+		if recv.recv().is_err() {
+			// The sender has disconnected, shut down the thread
+			break
 		}
+		// The sender has sent us something which is our cue to render
 		
-		// cleanup screen state
-		//screen.switch_to_main().unwrap();
-		//screen.show_cursor().unwrap();
-		//screen.flush().unwrap();
-		println!("Cleanup render state");
-	});
+		if let Some(buf) = app.selected_buffer() {
+			buf.render_to_screen(&mut screen).unwrap();
+		}
+	}
 	
-	send
+	// cleanup screen state
+	screen.show_cursor()?;
+	screen.switch_to_main()?;
+	screen.flush()?;
+	screen.disable_raw_mode()?;
+	screen.flush()?;
+	
+	Ok(())
 }

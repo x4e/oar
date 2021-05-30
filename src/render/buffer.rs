@@ -1,13 +1,13 @@
 use crate::Buffer;
+use crate::error::*;
 use crate::screen::Screen;
 use super::Renderable;
-use super::goto;
 
-use std::io::{self, Write};
+use std::io::{Write};
 
 
 impl Renderable for Buffer {
-	fn render_to_screen<W: Write>(&self, screen: &mut Screen<W>) -> io::Result<()> {
+	fn render_to_screen<W: Write>(&self, screen: &mut Screen<W>) -> Result<()> {
 		let pos = self.position;
 		let cursor = self.cursor;
 		let size = screen.size()?;
@@ -29,9 +29,9 @@ impl Renderable for Buffer {
 				if x >= (size.0 - pos.0) {
 					break;
 				}
-				//eprintln!("{},{}", x, y);
 				
-				write!(screen, "{}{}", goto(x, y), c)?;
+				screen.goto(x, y)?;
+				write!(screen, "{}", c)?;
 				
 				x += 1;
 			}
@@ -44,7 +44,7 @@ impl Renderable for Buffer {
 			
 		//}
 		
-		write!(screen, "{}", goto(cursor.0, cursor.1))?;
+		screen.goto(cursor.0, cursor.1)?;
 		screen.flush()?;
 		Ok(())
 	}
