@@ -40,9 +40,6 @@ Lint it:
 cargo clippy -- -D warnings
 ```
 
-Note: running clippy can sometimes fail with "`caused by: Compiler not supported`".
-To fix run like: `RUSTC_WRAPPER="" cargo clippy -- -D warnings`.
-
 Commit it:
 
 ```shell
@@ -56,3 +53,10 @@ Create a pull request:
 ```
 https://github.com/yourusernamehere/oar/pull/new/my-new-feature-branch
 ```
+
+## Extra Notes
+
+* Running clippy can sometimes fail with "`caused by: Compiler not supported`".
+  To fix run like: `RUSTC_WRAPPER="" cargo clippy -- -D warnings`.
+
+* If errors are being printed to stderr but you cannot see them due to the terminal rendering on stdout, try running with `2>&1 >/dev/null` to ignore all stdout.

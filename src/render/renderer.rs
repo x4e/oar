@@ -23,7 +23,6 @@ fn render(app: Arc<Application>, recv: mpsc::Receiver<()>) -> Result<()> {
 	
 	screen.switch_to_alternate()?;
 	screen.enable_raw_mode()?;
-	screen.hide_cursor()?;
 	screen.clear()?;
 	screen.flush()?;
 	
@@ -39,12 +38,6 @@ fn render(app: Arc<Application>, recv: mpsc::Receiver<()>) -> Result<()> {
 			buf.render_to_screen(&mut screen).unwrap();
 		}
 	}
-	
-	// cleanup screen state
-	screen.show_cursor()?;
-	screen.switch_to_main()?;
-	screen.disable_raw_mode()?;
-	screen.flush()?;
 	
 	Ok(())
 }

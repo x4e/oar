@@ -82,9 +82,9 @@ impl <W: Write> Screen<W> {
 
 impl <W: Write> Drop for Screen<W> {
 	fn drop(&mut self) {
-		self.show_cursor().unwrap();
-		self.switch_to_main().unwrap();
 		self.disable_raw_mode().unwrap();
+		self.switch_to_main().unwrap();
+		self.show_cursor().unwrap();
 		self.flush().unwrap();
 	}
 }

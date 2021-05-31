@@ -29,7 +29,7 @@ impl Renderable for Buffer {
 			let end_x = min(line.len() - 1, x + size.0);
 			let line: String = line.chars().take(end_x).skip(x).collect();
 			
-			write!(screen, "{}", line);
+			write!(screen, "{}", line)?;
 		}
 		
 		screen.goto(cursor.0, cursor.1)?;
